@@ -1,0 +1,42 @@
+name: Screenshot
+
+# WHEN it runs is controlled HERE (not in config.ini), because on GitHub
+# the schedule comes from this cron line. Times are in UTC.
+#   "0 7 * * *"    = every day at 07:00 UTC
+#   "0 */6 * * *"  = every 6 hours
+#   "30 5 * * 1-5" = 05:30 UTC on weekdays only
+# Change the line below to your preferred time, then commit the change.
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch: {}   # adds a manual "Run workflow" button in the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install browser and dependencies
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Take screenshot
+        run: python tracker.py --once
+
+      - name: Save screenshots back into the repository
+        run: |
+          git config user.name "screenshot-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add output
+          git commit -m "Screenshot $(date -u +'%Y-%m-%d %H:%M') UTC" || echo "Nothing new to commit"
+          git pull --rebase --autostash || true
+          git push
